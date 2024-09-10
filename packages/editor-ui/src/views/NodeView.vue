@@ -232,9 +232,7 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({
-			router,
-		});
+		const { runWorkflow, stopCurrentExecution, runUnitTests } = useRunWorkflow({ router });
 		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 			route,
 		});
@@ -254,6 +252,7 @@ export default defineComponent({
 			onMouseMoveEnd,
 			workflowHelpers,
 			runWorkflow,
+			runUnitTests,
 			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
@@ -930,10 +929,8 @@ export default defineComponent({
 		// Added by liam for the unit test functionality
 		async onRunUnitTests() {
 			// Copied and pasted from the run manual execution function. I deleted all the telemetry data
-			await this.runWorkflow({
-				destinationNode: 'Format First Name Test Evaluation',
-				unitTest: true,
-			});
+			await this.runUnitTests({});
+
 			this.refreshEndpointsErrorsState();
 		},
 		resetEndpointsErrors() {
