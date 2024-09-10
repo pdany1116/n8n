@@ -89,6 +89,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		triggerNode?: string;
 		nodeData?: ITaskData;
 		source?: string;
+		unitTest?: boolean; // added by Liam for unit test functionality
 	}): Promise<IExecutionPushResponse | undefined> {
 		const workflow = workflowHelpers.getCurrentWorkflow();
 
@@ -122,6 +123,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				runData,
 				workflowData.pinData,
 				workflow,
+				options.unitTest,
+				options.triggerNode,
 			);
 
 			const { startNodeNames } = consolidatedData;
@@ -320,6 +323,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		runData: IRunData | null,
 		pinData: IPinData | undefined,
 		workflow: Workflow,
+		unitTest: boolean = false,
+		triggerNode?: string | undefined,
 	): { runData: IRunData | undefined; startNodeNames: string[] } {
 		const startNodeNames = new Set<string>();
 		let newRunData: IRunData | undefined;
@@ -338,20 +343,26 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				parentNodes.push(directParentNode);
 
 				for (const parentNode of parentNodes) {
-					// We want to execute nodes that don't have run data neither pin data
-					// in addition, if a node failed we want to execute it again
-					if (
-						(!runData[parentNode]?.length && !pinData?.[parentNode]?.length) ||
-						runData[parentNode]?.[0]?.error !== undefined
-					) {
-						// When we hit a node which has no data we stop and set it
-						// as a start node the execution from and then go on with other
-						// direct input nodes
-						startNodeNames.add(parentNode);
-						break;
-					}
-					if (runData[parentNode] && !runData[parentNode]?.[0]?.error) {
-						newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
+					// Everything in the `else` was existing. The if and the code in
+					// the true section was added by Liam for the unit test functionality
+					if (unitTest && triggerNode) {
+						// getNode('triggerNode');
+					} else {
+						// We want to execute nodes that don't have run data neither pin data
+						// in addition, if a node failed we want to execute it again
+						if (
+							(!runData[parentNode]?.length && !pinData?.[parentNode]?.length) ||
+							runData[parentNode]?.[0]?.error !== undefined
+						) {
+							// When we hit a node which has no data we stop and set it
+							// as a start node the execution from and then go on with other
+							// direct input nodes
+							startNodeNames.add(parentNode);
+							break;
+						}
+						if (runData[parentNode] && !runData[parentNode]?.[0]?.error) {
+							newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
+						}
 					}
 				}
 			}
@@ -365,6 +376,8 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 		return { runData: newRunData, startNodeNames: [...startNodeNames] };
 	}
+
+	function findTriggerNodeId(parentNode: string) {}
 
 	async function stopCurrentExecution() {
 		const executionId = workflowsStore.activeExecutionId;
