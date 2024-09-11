@@ -10,6 +10,12 @@ import type { PermissionsRecord } from '@/permissions';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+const { onActivationUnitTestRuns } = useRunWorkflow({ router });
+
 const props = defineProps<{
 	workflowActive: boolean;
 	workflowId: string;
@@ -70,6 +76,10 @@ const disabled = computed((): boolean => {
 });
 
 async function activeChanged(newActiveState: boolean) {
+	if (newActiveState) {
+		onActivationUnitTestRuns();
+	}
+
 	return await workflowActivate.updateWorkflowActivation(props.workflowId, newActiveState);
 }
 

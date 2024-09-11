@@ -59,6 +59,11 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useNodeViewVersionSwitcher } from '@/composables/useNodeViewVersionSwitcher';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+
+const router = useRouter();
+const { onSaveUnitTestRuns } = useRunWorkflow({ router });
+
 const props = defineProps<{
 	readOnly?: boolean;
 	id: IWorkflowDb['id'];
@@ -83,7 +88,7 @@ const projectsStore = useProjectsStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
 
-const router = useRouter();
+
 const route = useRoute();
 
 const locale = useI18n();
@@ -257,6 +262,8 @@ async function onSaveButtonClick() {
 	if (isWorkflowSaving.value) {
 		return;
 	}
+
+	onSaveUnitTestRuns();
 
 	const id = getWorkflowId();
 

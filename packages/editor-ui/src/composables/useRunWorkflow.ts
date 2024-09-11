@@ -16,6 +16,7 @@ import type {
 	INode,
 	IDataObject,
 	IConnections,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
@@ -94,7 +95,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		const workflow = workflowHelpers.getCurrentWorkflow();
 		const nodes: INode[] = Object.values(workflow.nodes);
 
-		const testnodePairs: TestNodePair[] = [];
+		const testNodePairs: TestNodePair[] = [];
 
 		const testTriggerNodes: INode[] = nodes.filter(
 			(node) =>
@@ -118,15 +119,128 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			// don't add to output if there is no evaluation node
 			if (evaluationNode === undefined) continue;
 
-			testnodePairs.push({
+			testNodePairs.push({
 				triggerNodeName: testTriggerNode.name,
 				evaluationNodeName: evaluationNode.name,
 				connections: workflow.connectionsByDestinationNode,
 			});
 		}
 
-		for (const testNodePair of testnodePairs) {
+		for (const testNodePair of testNodePairs) {
 			// await runWorkflowApi(runData);
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
+			runWorkflow({
+				destinationNode: testNodePair.evaluationNodeName,
+				triggerNode: testNodePair.triggerNodeName,
+				unitTest: true,
+			});
+		}
+	}
+
+	// for running on activation. will only run tests that don't have it disabled (on by default)
+	async function onActivationUnitTestRuns(): Promise<void> {
+		const workflow = workflowHelpers.getCurrentWorkflow();
+		const nodes: INode[] = Object.values(workflow.nodes);
+
+		const testNodePairs: TestNodePair[] = [];
+
+		const testEvaluationNodes: INode[] = nodes.filter(
+			(node) =>
+				node.type === 'n8n-nodes-base.unitTest' &&
+				(node.parameters.testId as string)?.length > 0 &&
+				node.disabled === false &&
+				(node.parameters.additionalFields as IDataObject).runOnActivation !== false, // defaults running tests to true
+		);
+
+		// ensure each evaluation node has an trigger node
+		for (const testEvaluationNode of testEvaluationNodes) {
+			const testTriggerId: string = testEvaluationNode.parameters.testId as string; // TODO: Wrap in try catch
+
+			// TODO: Does this error when empty?
+			const triggerNode = nodes.find(
+				(node) =>
+					node.type === 'n8n-nodes-base.unitTestTrigger' &&
+					node.parameters.testId === testTriggerId &&
+					node.disabled === false,
+			);
+
+			// don't add to output if there is no evaluation node
+			if (triggerNode === undefined) continue;
+
+			testNodePairs.push({
+				triggerNodeName: triggerNode.name,
+				evaluationNodeName: testEvaluationNode.name,
+				connections: workflow.connectionsByDestinationNode,
+			});
+		}
+
+		for (const testNodePair of testNodePairs) {
+			// not awaiting on purpose
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
+			runWorkflow({
+				destinationNode: testNodePair.evaluationNodeName,
+				triggerNode: testNodePair.triggerNodeName,
+				unitTest: true,
+			});
+		}
+	}
+
+	// for running when saved on active workflow. will only run tests that don't have it disabled (on by default)
+	async function onSaveUnitTestRuns(): Promise<void> {
+		const workflow = workflowHelpers.getCurrentWorkflow();
+		const nodes: INode[] = Object.values(workflow.nodes);
+
+		const testNodePairs: TestNodePair[] = [];
+
+		const testEvaluationNodes: INode[] = [];
+
+		if (workflowsStore.isWorkflowActive) {
+			testEvaluationNodes.push(
+				...nodes.filter(
+					(node) =>
+						node.type === 'n8n-nodes-base.unitTest' &&
+						(node.parameters.testId as string)?.length > 0 &&
+						node.disabled === false &&
+						(node.parameters.additionalFields as IDataObject).runOnSaveOnActive !== false, // defaults running tests to true
+				),
+			);
+		} else {
+			testEvaluationNodes.push(
+				...nodes.filter(
+					(node) =>
+						node.type === 'n8n-nodes-base.unitTest' &&
+						(node.parameters.testId as string)?.length > 0 &&
+						node.disabled === false &&
+						(node.parameters.additionalFields as IDataObject).runOnSaveOnInactive !== false &&
+						(node.parameters.additionalFields as IDataObject).runOnSaveOnInactive !== undefined, // defaults running tests to false
+				),
+			);
+		}
+
+		// ensure each evaluation node has an trigger node
+		for (const testEvaluationNode of testEvaluationNodes) {
+			const testTriggerId: string = testEvaluationNode.parameters.testId as string; // TODO: Wrap in try catch
+
+			// TODO: Does this error when empty?
+			const triggerNode = nodes.find(
+				(node) =>
+					node.type === 'n8n-nodes-base.unitTestTrigger' &&
+					node.parameters.testId === testTriggerId &&
+					node.disabled === false,
+			);
+
+			// don't add to output if there is no evaluation node
+			if (triggerNode === undefined) continue;
+
+			testNodePairs.push({
+				triggerNodeName: triggerNode.name,
+				evaluationNodeName: testEvaluationNode.name,
+				connections: workflow.connectionsByDestinationNode,
+			});
+		}
+
+		for (const testNodePair of testNodePairs) {
+			// not awaiting on purpose
 			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			runWorkflow({
 				destinationNode: testNodePair.evaluationNodeName,
@@ -498,5 +612,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		runWorkflowApi,
 		stopCurrentExecution,
 		stopWaitingForWebhook,
+		onActivationUnitTestRuns,
+		onSaveUnitTestRuns,
 	};
 }
