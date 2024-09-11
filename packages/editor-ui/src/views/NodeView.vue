@@ -929,7 +929,7 @@ export default defineComponent({
 		// Added by liam for the unit test functionality
 		async onRunUnitTests() {
 			// Copied and pasted from the run manual execution function. I deleted all the telemetry data
-			await this.runUnitTests({});
+			await this.runUnitTests();
 
 			this.refreshEndpointsErrorsState();
 		},
