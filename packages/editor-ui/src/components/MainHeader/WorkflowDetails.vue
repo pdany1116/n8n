@@ -23,6 +23,7 @@ import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import HideUnitTestButton from '@/components/MainHeader/HideUnitTestButton.vue';
 
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -615,6 +616,20 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		});
 	}
 }
+
+function hasUnitTests(): boolean {
+	const currentWorkflow = workflowHelpers.getCurrentWorkflow();
+
+	const unitTestNodeSearch = currentWorkflow
+		.getTriggerNodes()
+		.find((node) => node.type === 'n8n-nodes-base.unitTestTrigger' && node.disabled === false);
+
+	if (unitTestNodeSearch === undefined) {
+		return false;
+	} else {
+		return true;
+	}
+}
 </script>
 
 <template>
@@ -671,6 +686,10 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			/>
 		</span>
 		<span v-else class="tags"></span>
+
+		<div v-if="hasUnitTests()" :class="$style.group">
+			<HideUnitTestButton :initial-state="true" />
+		</div>
 
 		<PushConnectionTracker class="actions">
 			<span :class="`activator ${$style.group}`">
